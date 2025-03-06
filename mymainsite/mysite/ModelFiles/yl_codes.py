@@ -70,89 +70,8 @@ def prepare_data(train_x, train_y, val_x, val_y, test_x, test_y, time_steps=5):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-# data = pd.read_csv(r"C:\Users\Msi\DjangoProjects\MyWebsite\personalwebsite\mysite\ModelFiles\carbon_emmision_info.csv",
-#                    index_col=0)
-# print(data.columns)
-# scaler_x = MinMaxScaler()
-# scaler_y = joblib.load(r"C:\Users\Msi\DjangoProjects\MyWebsite\personalwebsite\mysite\ModelFiles\scaler_y.joblib")
-#
-# scaler_x, scaler_y, train_x_lstm, train_y_lstm, val_x_lstm, val_y_lstm, test_x_lstm, test_y_lstm, train_lstm, val_lstm, test_lstm = \
-#     scale_and_split_data(data, "Turkey", scaler_x, scaler_y)
-#
-# X_train_lstm, y_train_lstm, X_val_lstm, y_val_lstm, X_test_lstm, y_test_lstm = prepare_data(train_x_lstm,
-#                                                                                             train_y_lstm,
-#                                                                                             val_x_lstm,
-#                                                                                             val_y_lstm,
-#                                                                                             test_x_lstm,
-#                                                                                             test_y_lstm)
 
 
-def forecast_lstm_final(lstm_model, steps=10):
-    # Veriyi yükle
-    data = pd.read_csv(
-        r"C:\Users\Msi\DjangoProjects\MyWebsite\personalwebsite\mysite\ModelFiles\carbon_emmision_info.csv",
-        index_col=0)
-    # print("Sütunlar:", data.columns)
-
-    # Sütun adlarını düzenle ve gereksiz sütunları kaldır
-    data = data.rename(columns={"Annual CO₂ emissions": "target"})
-    if "co2" in data.columns:
-        data.drop("co2", axis=1, inplace=True)
-
-    # Eksik değerleri kaldır
-    data = data.dropna()
-
-    # Ölçeklendirme ve veri bölme
-    scaler_x = MinMaxScaler()
-    scaler_y = joblib.load(r"C:\Users\Msi\DjangoProjects\MyWebsite\personalwebsite\mysite\ModelFiles\scaler_y.joblib")
-    scaler_x, scaler_y, train_x_lstm, train_y_lstm, val_x_lstm, val_y_lstm, test_x_lstm, test_y_lstm, train_lstm, val_lstm, test_lstm = \
-        scale_and_split_data(data, "Turkey", scaler_x, scaler_y)
-
-    # Zaman penceresi oluştur
-    X_train_lstm, y_train_lstm, X_val_lstm, y_val_lstm, X_test_lstm, y_test_lstm = prepare_data(
-        train_x_lstm, train_y_lstm, val_x_lstm, val_y_lstm, test_x_lstm, test_y_lstm
-    )
-    # print(X_test_lstm.shape)
-    # Tahminleri yap
-    train_predictions = lstm_model.predict(X_train_lstm)
-    val_predictions = lstm_model.predict(X_val_lstm)
-    test_predictions = lstm_model.predict(X_test_lstm)
-
-    # Gelecek tahminleri yap
-    X_test = X_test_lstm[-1:]
-    # print(X_test_lstm.shape)
-    # np.save("X_test.npy", X_test)
-    future_predictions = []
-    for _ in range(steps):
-        prediction = lstm_model.predict(X_test.reshape(1, X_test.shape[1], X_test.shape[2]))
-        future_predictions.append(prediction[0, 0])
-        prediction_reshaped = np.repeat(prediction, 13).reshape(1, 1, 13)
-        X_test = np.concatenate((X_test[:, 1:], prediction_reshaped), axis=1)
-
-    # Ölçeklendirmeyi geri al
-    train_predictions_rescaled = scaler_y.inverse_transform(train_predictions.reshape(-1, 1)).flatten()
-    val_predictions_rescaled = scaler_y.inverse_transform(val_predictions.reshape(-1, 1)).flatten()
-    test_predictions_rescaled = scaler_y.inverse_transform(test_predictions.reshape(-1, 1)).flatten()
-    future_predictions_rescaled = scaler_y.inverse_transform(np.array(future_predictions).reshape(-1, 1)).flatten()
-
-    # Gerçek değerleri ölçeklendirmeyi geri al
-    y_train_rescaled = scaler_y.inverse_transform(y_train_lstm.reshape(-1, 1)).flatten()
-    y_val_rescaled = scaler_y.inverse_transform(y_val_lstm.reshape(-1, 1)).flatten()
-    y_test_rescaled = scaler_y.inverse_transform(y_test_lstm.reshape(-1, 1)).flatten()
-
-    # Sonuçları kaydet
-    pd.DataFrame({"train_predictions": train_predictions_rescaled,
-                  "y_train": y_train_rescaled}).to_csv("train_predictions.csv")
-
-    pd.DataFrame({"test_predictions": test_predictions_rescaled,
-                  "y_test": y_test_rescaled}).to_csv("test_predictions.csv")
-
-    pd.DataFrame({"val_predictions": val_predictions_rescaled,
-                  "y_val": y_val_rescaled, }).to_csv("val_predictions.csv")
-
-    pd.DataFrame({"future_predictions": future_predictions_rescaled, }).to_csv("future_predictions.csv")
-
-    return "tamamlandı"
 
 
 # Modeli yükle ve tahminleri yap
